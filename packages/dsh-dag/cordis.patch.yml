@@ -1,0 +1,6 @@
+# dsh-dag bundle patch: insert the plugin row into the host composition.
+# Installing the package (dsh plugin --profile <name> add @evo-router/dsh-dag)
+# applies this patch; the row provides the `dag` service on the host plane.
+- insert:
+    - id: dsh-dag
+      name: '@evo-router/dsh-dag'

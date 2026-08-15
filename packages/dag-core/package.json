@@ -1,0 +1,34 @@
+{
+  "name": "@evo-router/dag-core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Framework-free deterministic DAG orchestration core — TypeScript port of the llm-router planner/scheduler/validator/fusion pipeline",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "dag",
+    "orchestration",
+    "multi-agent",
+    "scheduler"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
