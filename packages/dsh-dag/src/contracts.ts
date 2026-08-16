@@ -8,7 +8,7 @@
 
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { Context } from '@deepseek-ai/cordis'
-import type { TaskGraphProposal } from '@evo-router/dag-core'
+import type { TaskGraphProposal } from 'dsh-dag-core'
 
 /** The plugin's service view of the DSH host context. */
 export type HarnessContext = Context

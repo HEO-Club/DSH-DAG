@@ -14,8 +14,8 @@ import {
   createNodeResult,
   ExecutionErrorType,
   NodeResultStatus,
-} from '@evo-router/dag-core'
-import type { ArtifactRef, ExecutionPlan, NodeExecutionRequest, NodeResult, TaskGraphProposal } from '@evo-router/dag-core'
+} from 'dsh-dag-core'
+import type { ArtifactRef, ExecutionPlan, NodeExecutionRequest, NodeResult, TaskGraphProposal } from 'dsh-dag-core'
 import type { DagConfig } from './config.js'
 import type { HarnessContext } from './contracts.js'
 

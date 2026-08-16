@@ -1,5 +1,5 @@
 /**
- * @evo-router/dsh-dag — DSH Multi-Agent DAG plugin entry.
+ * dsh-dag — DSH Multi-Agent DAG plugin entry.
  *
  * A Cordis plugin that provides the `dag` service and registers the `dag_run`
  * model tool. Runs on the host plane (it publishes the `dag` service); the

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "DSH Multi-Agent DAG plugin monorepo: @evo-router/dag-core (framework-free orchestration core) + @evo-router/dsh-dag (DeepSeek Harness Cordis plugin)",
+  "description": "DSH Multi-Agent DAG plugin monorepo: dsh-dag-core (framework-free orchestration core) + dsh-dag (DeepSeek Harness Cordis plugin)",
   "workspaces": [
     "packages/*"
   ],

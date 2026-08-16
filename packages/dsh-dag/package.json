@@ -27,7 +27,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@evo-router/dag-core": "^0.1.0"
+    "dsh-dag-core": "^0.1.0"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",

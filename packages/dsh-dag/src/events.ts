@@ -5,7 +5,7 @@
  */
 
 import type { Session } from '@deepseek-ai/dsh-session'
-import type { RunStatus } from '@evo-router/dag-core'
+import type { RunStatus } from 'dsh-dag-core'
 import type { HarnessContext } from './contracts.js'
 
 export interface DagRunStartData {

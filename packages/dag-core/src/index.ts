@@ -1,5 +1,5 @@
 /**
- * @evo-router/dag-core — framework-free deterministic DAG orchestration core.
+ * dsh-dag-core — framework-free deterministic DAG orchestration core.
  *
  * TypeScript port of the llm-router planner/scheduler/validator/fusion
  * pipeline. Zero third-party runtime dependencies; zero @deepseek-ai imports.

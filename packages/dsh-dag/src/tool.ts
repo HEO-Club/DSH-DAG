@@ -15,8 +15,8 @@ import {
   proposalJsonSchema,
   TaskGraphCompiler,
   validateProposalShape,
-} from '@evo-router/dag-core'
-import type { PlanningIssue } from '@evo-router/dag-core'
+} from 'dsh-dag-core'
+import type { PlanningIssue } from 'dsh-dag-core'
 import type { DagConfig } from './config.js'
 import type { DAGRunController } from './dag-service.js'
 import type { DAGRunResultData } from './dag-run.js'

@@ -12,8 +12,8 @@ import {
   randomHex,
   runPlan,
   TaskGraphCompiler,
-} from '@evo-router/dag-core'
-import type { DagCoreEvent, RunStatus } from '@evo-router/dag-core'
+} from 'dsh-dag-core'
+import type { DagCoreEvent, RunStatus } from 'dsh-dag-core'
 import { createFusionExecutor } from './fusion-executor.js'
 import { DagEvents } from './events.js'
 import { createSubagentNodeExecutor } from './node-executor.js'

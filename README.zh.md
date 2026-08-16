@@ -56,7 +56,7 @@ dag-core    框架无关的编排引擎 —— 模型、校验、分析、
 ### 1. 安装到 DSH profile
 
 ```bash
-dsh plugin --profile <name> add @evo-router/dsh-dag
+dsh plugin --profile <name> add dsh-dag
 ```
 
 安装时会自动应用插件的 bundle patch，把 `dsh-dag` 行插入宿主组合，并在宿主平面提供 `dag` 服务。验证是否生效：
@@ -77,7 +77,7 @@ dsh --profile <name> --dump-config | grep dsh-dag
     dag: true
   config:
     - id: dsh-dag-tool
-      name: '@evo-router/dsh-dag'
+      name: 'dsh-dag'
 ```
 
 ### 3. 使用
@@ -192,7 +192,7 @@ await run.dispose()
 ## 卸载
 
 ```bash
-dsh plugin --profile <name> remove @evo-router/dsh-dag
+dsh plugin --profile <name> remove dsh-dag
 ```
 
 然后从智能体 preset 中移除组合的副本（例如上面的 `dag-delegation` 组），并重启会话。卸载时插件会自动取消所有进行中的运行。
@@ -206,8 +206,8 @@ dsh plugin --profile <name> remove @evo-router/dsh-dag
 
 ```
 packages/
-├── dag-core/   @evo-router/dag-core  —— 框架无关的编排引擎（零运行时依赖）
-└── dsh-dag/    @evo-router/dsh-dag   —— Cordis 插件适配层
+├── dag-core/   dsh-dag-core  —— 框架无关的编排引擎（零运行时依赖）
+└── dsh-dag/    dsh-dag   —— Cordis 插件适配层
 ```
 
 ```bash
@@ -218,8 +218,6 @@ npm test                       # 110 个确定性测试 —— 无网络、无�
 ```
 
 `dag-core` 是经过验证的 Python 编排中间层的忠实 TypeScript 移植，为保持 1:1 对齐（组件映射见上方的规范文档）。插件适配层刻意保持轻薄：所有编排逻辑都在 `dag-core`，所有 DSH 相关逻辑都在 `dsh-dag`。
-
-> **发布前注意**：两个包目前在 `package.json` 中声明的名字是 `dsh-dag-core` / `dsh-dag`，而代码、插件 patch 与本文档统一引用 `@evo-router/dag-core` / `@evo-router/dsh-dag`。发布前请对齐声明的包名，确保 `npm run build -w @evo-router/…` 与 registry 安装都能正确解析。
 
 ## 许可证
 

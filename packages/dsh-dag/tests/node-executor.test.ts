@@ -4,9 +4,9 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { createTaskGraphProposal, TaskGraphCompiler } from '@evo-router/dag-core'
-import type { ExecutionPlan, TaskGraphProposal } from '@evo-router/dag-core'
-import { ExecutionErrorType, NodeResultStatus } from '@evo-router/dag-core'
+import { createTaskGraphProposal, TaskGraphCompiler } from 'dsh-dag-core'
+import type { ExecutionPlan, TaskGraphProposal } from 'dsh-dag-core'
+import { ExecutionErrorType, NodeResultStatus } from 'dsh-dag-core'
 import { createSubagentNodeExecutor } from '../src/node-executor.js'
 import type { DagConfig } from '../src/config.js'
 import { createFakeSubagents, makeParent } from './fixtures.js'

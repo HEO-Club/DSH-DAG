@@ -56,7 +56,7 @@ Every run follows one deterministic pipeline:
 ### 1. Install the plugin into a DSH profile
 
 ```bash
-dsh plugin --profile <name> add @evo-router/dsh-dag
+dsh plugin --profile <name> add dsh-dag
 ```
 
 Installing applies the plugin's bundle patch, which inserts the `dsh-dag` row into the host composition and provides the `dag` service on the host plane. Verify it landed:
@@ -77,7 +77,7 @@ The `dag_run` tool is exposed per agent by composing a preset copy with an isola
     dag: true
   config:
     - id: dsh-dag-tool
-      name: '@evo-router/dsh-dag'
+      name: 'dsh-dag'
 ```
 
 ### 3. Use it
@@ -192,7 +192,7 @@ Payloads carry scalar facts only — never live handles.
 ## Uninstall
 
 ```bash
-dsh plugin --profile <name> remove @evo-router/dsh-dag
+dsh plugin --profile <name> remove dsh-dag
 ```
 
 Then remove the composed preset copy (e.g. the `dag-delegation` group above) from your agent preset and restart the session. Active runs are cancelled automatically on unload.
@@ -206,8 +206,8 @@ Quick orientation — the full engineering specification and migration plan live
 
 ```
 packages/
-├── dag-core/   @evo-router/dag-core  — framework-free orchestration engine (zero runtime deps)
-└── dsh-dag/    @evo-router/dsh-dag   — the Cordis plugin adapter
+├── dag-core/   dsh-dag-core  — framework-free orchestration engine (zero runtime deps)
+└── dsh-dag/    dsh-dag   — the Cordis plugin adapter
 ```
 
 ```bash
@@ -218,8 +218,6 @@ npm test                       # 110 deterministic tests — no network, no real
 ```
 
 `dag-core` is a faithful TypeScript port of a proven Python orchestration middle layer, kept 1:1 for parity (component mapping in the spec above). The plugin adapter is deliberately thin: everything orchestration-related lives in `dag-core`, everything DSH-related lives in `dsh-dag`.
-
-> **Before publishing**: the packages currently declare the names `dsh-dag-core` / `dsh-dag` in their `package.json`, while the code, the plugin patch and this README all reference `@evo-router/dag-core` / `@evo-router/dsh-dag`. Align the declared names so that `npm run build -w @evo-router/…` and registry installation resolve correctly.
 
 ## License
 
