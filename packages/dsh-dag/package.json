@@ -1,6 +1,6 @@
 {
   "name": "dsh-dag",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "DSH Multi-Agent DAG plugin — declarative deterministic DAG orchestration for DeepSeek Harness (Cordis plugin adapter)",
   "main": "./lib/index.js",
