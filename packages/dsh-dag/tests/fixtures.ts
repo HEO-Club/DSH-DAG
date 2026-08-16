@@ -6,8 +6,8 @@
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { SubagentResult, SubagentStartRequest } from '@deepseek-ai/dsh-subagent'
-import { createTaskGraphProposal } from '@evo-router/dag-core'
-import type { TaskGraphProposal } from '@evo-router/dag-core'
+import { createTaskGraphProposal } from 'dsh-dag-core'
+import type { TaskGraphProposal } from 'dsh-dag-core'
 
 export type FakeStopReason = SubagentResult['stopReason']
 

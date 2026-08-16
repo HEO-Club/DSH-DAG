@@ -5,8 +5,8 @@
  */
 
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { FusionLlmFuse } from '@evo-router/dag-core'
-import { failureSummary } from '@evo-router/dag-core'
+import type { FusionLlmFuse } from 'dsh-dag-core'
+import { failureSummary } from 'dsh-dag-core'
 import type { DagConfig } from './config.js'
 import type { HarnessContext } from './contracts.js'
 

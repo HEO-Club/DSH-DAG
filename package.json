@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "DSH Multi-Agent DAG plugin monorepo: @evo-router/dag-core (framework-free orchestration core) + @evo-router/dsh-dag (DeepSeek Harness Cordis plugin)",
+  "description": "DSH Multi-Agent DAG plugin monorepo: dsh-dag-core (framework-free orchestration core) + dsh-dag (DeepSeek Harness Cordis plugin)",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @evo-router/dag-core && npm run build -w @evo-router/dsh-dag",
-    "typecheck": "npm run typecheck -w @evo-router/dag-core && npm run typecheck -w @evo-router/dsh-dag",
-    "test": "npm run test -w @evo-router/dag-core && npm run test -w @evo-router/dsh-dag"
+    "build": "npm run build -w packages/dag-core && npm run build -w packages/dsh-dag",
+    "typecheck": "npm run typecheck -w packages/dag-core && npm run typecheck -w packages/dsh-dag",
+    "test": "npm run test -w packages/dag-core && npm run test -w packages/dsh-dag"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

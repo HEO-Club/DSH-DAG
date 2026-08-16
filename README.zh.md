@@ -1,86 +1,73 @@
 # DSH 多智能体 DAG 插件
 
-> 声明式、确定性的多智能体 DAG 编排插件，面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）。
->
-> 代码仓库：`@evo-router/dag-core`（编排核心，框架无关） + `@evo-router/dsh-dag`（DSH 适配插件）
+> [English](./README.md) · **中文（简体）**
 
-DSH 的主智能体循环是一个"单条长时间运行回合"的机器。在主智能体里手工编排多智能体工作流（大量互相独立、部分互相依赖、并行执行、聚合结果）既易出错又难以扩展。DSH 已经内置了**命令式**的扇出能力（`subagent` 工具、`workflow` 工具），但缺少一个**声明式、确定性、基于依赖图**的编排器：就绪节点检测、并发上限、重试策略、结果聚合。
+让你的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 智能体能够**以声明式的方式运行复杂的多智能体工作流**：把一个大的任务拆成一张由若干小任务（节点）组成的依赖图，互不依赖的节点并行执行，最后把结果汇成一份答案——编排过程由代码确定性保证。
 
-本插件补上这一环——它是 [`llm-router`](../README.md)（Python 包）V0.1 分阶段运行时中经过验证的编排中间层的忠实 TypeScript 移植。设计与迁移方案见
-[`docs/dsh-plugin/DSH Multi-Agent DAG Plugin — Engineering Specification & Migration Plan.md`](../docs/dsh-plugin/DSH%20Multi-Agent%20DAG%20Plugin%20—%20Engineering%20Specification%20%26%20Migration%20Plan.md)。
+## 这是什么
 
-```
-DSH 主智能体执行流
-  ↓ 模型调用 dag_run（或任意插件调用 ctx.dag.start()）
-DSH 适配插件   @evo-router/dsh-dag   （Cordis 插件：工具、服务、配置、事件）
-  ↓
-DAG 编排核心   @evo-router/dag-core   （框架无关 TS：DAG 模型、校验、分析、
-               状态机、事件驱动调度器、异步调度器、调度内核、重试、
-               节点校验、融合/去重）
-  ↓
-并行智能体执行  （经 ctx.subagents 并发拉起子智能体）
-```
+DSH 的主智能体是一条"长时间运行"的回合机器。在主智能体里手工编排多智能体工作流（一部分子任务互相独立、一部分互相依赖、并行执行、聚合结果）既容易出错，也无法扩展。DSH 内置了**命令式**的扇出能力（`subagent`、`workflow`），但缺少一种**声明式**描述依赖图、由机器来执行的方式。
 
----
+这个插件补上了这一环。模型（或任意调用方）提交一段简短的 JSON 来描述工作流——节点、依赖、成功标准——剩下的事情交给插件：
 
-## 核心特性
+- 在运行前**校验**任务图，非法提案直接拒绝，不会浪费任何一次调用；
+- 在并发上限内**并行调度**所有就绪节点；
+- 对有限的失败做**指数退避重试**；
+- 把成功的节点结果**融合**成一份最终答案。
+
+**你只需要描述工作流*是什么*，插件负责它*怎么跑*。**
+
+## 能力一览
 
 | 能力 | 说明 |
 |---|---|
-| 声明式输入 | 模型（或调用方）提交 `TaskGraphProposal` 形状的 JSON：节点、`dependsOn`、`inputSources`、成功标准、可选每节点模型 |
-| 确定性 DAG 校验 | 重复节点、未知依赖、自环、环（Kahn）、输入源一致性、schema 兼容、最终输出存在性、不可执行传播——非法提案**不创建运行**，返回结构化可纠正错误 |
-| DAG 分析 | 拓扑层级、并行分组、关键路径、优先级 |
-| 就绪节点计算 | 事件驱动：全部上游 SUCCEEDED → READY；任一上游 FAILED/CANCELLED → BLOCKED |
-| 并行执行 | 独立节点并发运行（全局 + 按模型信号量）；下游仅在所有父节点成功后释放 |
-| 执行状态机 | `PENDING→READY→RUNNING→SUCCEEDED/FAILED/CANCELLED`、`BLOCKED` 级联，合法转换 + 审计日志 |
-| 重试 / 失败处理 | 仅重试可重试错误，指数退避有上限；每节点超时 → `timed_out` 并入重试策略；取消传播；卡死检测 |
-| 结果传播 | 上游输出/产物按节点 id 存储，在构造下游请求时注入（有字符上限） |
-| 结果聚合 | 单结果直通；N 结果走 LLM 融合（`fusion: auto/llm`）或确定性去重拼接（`fusion: none`） |
-| 可观测性 | `dag/*` 生命周期事件（宿主事件 + 可选写入调用方 Agent 的 Session） |
+| 声明式输入 | 一段 JSON 任务图：节点、`dependsOn`、`inputSources`、成功标准、可选的每节点模型 |
+| 确定性校验 | 重复 id、未知依赖、环、缺失输入来源……非法提案在**运行开始前**被拒绝，并返回结构化、可被模型修正的错误 |
+| 并行调度 | 独立节点在全局 + 按模型并发上限下并行运行；下游节点仅在所有父节点成功后释放 |
+| 节点状态机 | `PENDING → READY → RUNNING → SUCCEEDED / FAILED / CANCELLED`，失败级联为 `BLOCKED`，全程可审计 |
+| 重试与恢复 | 只重试可重试的错误，指数退避有上限；每节点超时；取消干净传播 |
+| 结果聚合 | 单个结果直接透传；多个结果由一次 LLM 调用融合（或确定性去重拼接） |
+| 可观测性 | `dag/*` 生命周期事件发往宿主，可选写入调用方智能体的 Session |
 
----
-
-## 仓库结构
+## 工作原理
 
 ```
-packages/
-├── dag-core/    @evo-router/dag-core  — 框架无关的编排核心
-│   ├── src/     model, proposal, compiler, validation, analysis, state-machine,
-│   │            event-scheduler, async-scheduler, scheduling-kernel,
-│   │            executor-contracts, retry, node-validator, fusion, dedup, run
-│   └── tests/   95 个测试（校验、分析、状态机、调度器、内核、重试、
-│                节点校验、融合/去重、E2E 场景）
-└── dsh-dag/     @evo-router/dsh-dag  — Cordis 适配插件
-    ├── src/     index, config, dag-service, dag-run, tool, node-executor,
-    │            fusion-executor, events, contracts
-    ├── cordis.patch.yml
-    └── tests/   16 个测试（插件挂载、运行控制器、节点执行器、工具契约）
+DSH 主智能体
+  │   模型调用 dag_run 工具（或插件调用 ctx.dag.start()）
+  ▼
+dsh-dag     Cordis 插件层 —— 工具、服务、配置、事件
+  │
+  ▼
+dag-core    框架无关的编排引擎 —— 模型、校验、分析、
+            调度器、状态机、重试、融合
+  │
+  ▼
+并行智能体执行 —— 通过 DSH subagents 并发拉起子智能体
 ```
 
----
+每一次运行都走同一条确定性流水线：
+
+1. **编译与校验** —— 检查提案；非法图返回可修正的错误，不创建运行。
+2. **按波次执行** —— 就绪节点作为并发子智能体运行；每个节点的结果会释放（或阻塞）它的下游。
+3. **重试与融合** —— 带校验反馈的有界重试；成功的节点结果融合成一份最终答案。
 
 ## 快速开始
 
-```bash
-# 在本目录安装依赖（typescript + vitest）
-npm install --ignore-scripts
-
-# 构建 + 验证
-npm run build        # tsc → packages/*/lib
-npm run typecheck
-npm test             # 111 个测试，无网络、无真实 LLM
-```
-
-### 安装到 DSH profile
+### 1. 安装到 DSH profile
 
 ```bash
-dsh plugin --profile <name> add @evo-router/dsh-dag
+dsh plugin --profile <name> add dsh-dag
 ```
 
-该命令应用 `packages/dsh-dag/cordis.patch.yml`，把 `dsh-dag` 行插入宿主组合。本地开发时可直接用目录路径代替包名安装。
+安装时会自动应用插件的 bundle patch，把 `dsh-dag` 行插入宿主组合，并在宿主平面提供 `dag` 服务。验证是否生效：
 
-- `dag` 服务位于**宿主平面**（跨会话共享）；
-- `dag_run` 工具按智能体暴露：复制一份 preset 并用 `isolate` 隔离域组合（镜像内置 `delegation` 组对 `workflowEngine` 的隔离写法）：
+```bash
+dsh --profile <name> --dump-config | grep dsh-dag
+```
+
+### 2. 把工具暴露给你的智能体
+
+`dag_run` 工具按智能体暴露：复制一份 preset 并用隔离域（`isolate`）组合，写法与内置 `delegation` 组隔离 `workflowEngine` 的方式一致：
 
 ```yaml
 - id: dag-delegation
@@ -90,36 +77,16 @@ dsh plugin --profile <name> add @evo-router/dsh-dag
     dag: true
   config:
     - id: dsh-dag-tool
-      name: '@evo-router/dsh-dag'
+      name: 'dsh-dag'
 ```
 
-> `dsh-dag` 是 bundle 插件——`dsh plugin add` 安装时即自动应用其 patch。验证：
-> `dsh --profile <name> --dump-config | grep dsh-dag`，再在真实会话里跑一次冒烟。
+### 3. 使用
 
----
+直接让智能体处理一个多步骤任务，或者用下面的示例工作流直接调用工具。
 
-## 配置项
+## 使用 `dag_run` 工具
 
-| 键 | 默认值 | 含义 |
-|---|---|---|
-| `toolName` | `'dag_run'` | 模型可见的工具名 |
-| `subagentProvider` | `'spawn'` | 每个节点（及融合调用）使用的 `ctx.subagents` provider |
-| `globalLimit` | `4` | 全局节点并发上限（0 = 不限） |
-| `perModelLimits` | `{}` | 按模型并发上限（0 = 不限） |
-| `retryPolicy.maxRetries` | `2` | 每节点重试上限 |
-| `retryPolicy.baseDelaySeconds` | `1` | 指数退避基数 |
-| `retryPolicy.maxDelaySeconds` | `30` | 退避上限 |
-| `nodeTimeoutSeconds` | `300` | 每节点超时（0 = 禁用） |
-| `maxTotalNodes` | `32` | 每次运行的节点数硬顶 |
-| `maxResultChars` | `100_000` | 注入下游 prompt 的依赖输出字符上限 |
-| `fusion` | `'auto'` | `'auto'` 单结果直通、多结果 LLM 融合；`'llm'` 总是融合；`'none'` 确定性拼接 |
-| `emitSessionEvents` | `true` | 把 `dag/*` 记录写入调用方 Agent 的 Session |
-
----
-
-## 工作流输入 schema（`dag_run`）
-
-模型（或任意调用方）提交 `TaskGraphProposal` 形状的 JSON：
+提交 `TaskGraphProposal` 形状的 JSON：
 
 ```jsonc
 {
@@ -128,17 +95,16 @@ dsh plugin --profile <name> add @evo-router/dsh-dag
   "objective": "调研 X 并撰写报告",
   "nodes": [
     {
-      "nodeId": "search",             // ^[a-z][a-z0-9_-]{0,63}$
+      "nodeId": "search",
       "title": "检索文献",
       "prompt": "查找并总结关于 X 的权威资料。",
       "capabilityRequirements": ["web"],
       "outputRequirements": ["一份来源清单（列表形式）"],
       "successCriteria": ["至少 3 个来源"],
-      "executorKind": "runtime",      // direct_llm | runtime | worker_agent
+      "executorKind": "runtime",
       "toolLabels": ["web_search"],
-      "model": "deepseek-chat",       // 可选；缺省走 provider 默认路由
-      "dependsOn": [],                // 可选
-      "inputSources": []              // 每个 dependsOn 项必须对应一条
+      "dependsOn": [],
+      "inputSources": []
     },
     {
       "nodeId": "draft",
@@ -155,9 +121,9 @@ dsh plugin --profile <name> add @evo-router/dsh-dag
 }
 ```
 
-插件会**确定性编译并校验**提案（重复 id、未知依赖、Kahn 环检测、`dependsOn` ⇔ `inputSources` 一致性、schema 兼容、最终输出存在性、不可执行传播）；非法提案**不创建运行**，返回结构化、模型可纠正的错误。
+非法的提案永远不会创建运行——你会收到结构化、可修正的错误。
 
-### 工具结果信封
+### 结果信封
 
 ```jsonc
 {
@@ -165,12 +131,12 @@ dsh plugin --profile <name> add @evo-router/dsh-dag
   "status": "completed",              // completed | partial | failed | cancelled
   "value": "……融合后的最终答案……",
   "nodeCount": 2,
-  "agentsStarted": 3,                 // 节点数 + 可选融合调用
+  "agentsStarted": 3,
   "failures": [{ "nodeId": "draft", "status": "failed", "error": "…" }]
 }
 ```
 
-非 `completed` 状态以工具错误形式呈现（绝不伪装成成功）。
+除 `completed` 以外的状态都会以工具错误的形式呈现——绝不伪装成成功。
 
 ### 编程入口
 
@@ -184,50 +150,74 @@ const outcome = await run.result
 await run.dispose()
 ```
 
----
+## 配置项
 
-## 事件词汇表
+| 键 | 默认值 | 含义 |
+|---|---|---|
+| `toolName` | `dag_run` | 模型可见的工具名 |
+| `subagentProvider` | `spawn` | 每个节点（及融合调用）使用的 `ctx.subagents` provider |
+| `globalLimit` | `4` | 全局节点并发上限（0 = 不限） |
+| `perModelLimits` | `{}` | 按模型并发上限（0 = 不限） |
+| `retryPolicy.maxRetries` | `2` | 每节点重试上限 |
+| `retryPolicy.baseDelaySeconds` | `1` | 指数退避基数 |
+| `retryPolicy.maxDelaySeconds` | `30` | 退避上限 |
+| `nodeTimeoutSeconds` | `300` | 每节点超时（0 = 禁用） |
+| `maxTotalNodes` | `32` | 每次运行的节点数硬顶 |
+| `maxResultChars` | `100000` | 注入下游 prompt 的依赖输出字符上限 |
+| `fusion` | `auto` | `auto`：单结果透传、多结果 LLM 融合；`llm`：总是融合；`none`：确定性拼接 |
+| `emitSessionEvents` | `true` | 把 `dag/*` 事件写入调用方智能体的 Session |
 
-观察型 `dag/*` 事件同时发往宿主，并（可选）追加到调用方 Agent 的 Session：
+## 可观测性
+
+只读的 `dag/*` 事件同时发往宿主，并（可选）写入调用方智能体的 Session：
 
 `dag/run-start` · `dag/node-start` · `dag/node-end` · `dag/retry` · `dag/run-end`
 
 负载只携带标量事实（runId、nodeId、status、attempt、objective、nodeCount），绝不含活动句柄。
 
----
+## 保证与限制
 
-## 行为保证
+**你可以放心依赖的**
 
-- **确定性核心**：图合法性、状态转换（`PENDING → READY → RUNNING → SUCCEEDED/FAILED/CANCELLED`、`BLOCKED` 级联）、并发上限、重试上限与退避、依赖传播均由代码强制（呼应 Router 的"LLM 决策、代码执行"原则）。
-- **并行执行**：独立节点在全局 + 按模型上限下并发运行；下游仅在全部父节点成功后释放，任一父节点失败/取消则 BLOCKED。
-- **重试**：只重试可重试错误，指数退避有上限，重试 prompt 会附加校验反馈；每节点超时映射为 `timed_out` 并进入重试策略。
-- **聚合**：单结果直通；N 结果经一次子智能体调用融合（`fusion: auto/llm`）或确定性去重拼接（`fusion: none`）；运行状态为 `completed/partial/failed/cancelled`。
-- **取消**：`run.cancel()` / `exec.signal` 中止在途子智能体；所有子运行必然被 dispose。
+- **确定性由代码强制**：图的合法性、状态转换、并发上限、重试上限与依赖传播全部由引擎保证——*模型做决策，代码做执行*。
+- **安全的取消**：`run.cancel()` / `exec.signal` 会中止在途的子智能体；每个子运行必然被 dispose。
 
----
+**当前限制（V0.1）**
 
-## 已知限制（V0.1）
+- 仅前台运行——不支持后台启动/轮询，无日志恢复/断点续跑。
+- 无预算/成本台账；并发默认保守，以约束 token 消耗。
+- 插件永不自行判断单智能体 vs 多智能体——只有当模型判断任务确实需要 DAG 时才会调用 `dag_run`。
+- 委派子智能体继承 DSH 子智能体策略（审批固定为 `never`、继承沙箱作用域）；需要审批类工具的节点会确定性失败。
 
-- **仅前台运行**（无后台启动/轮询），**无日志恢复/断点续跑**——与 DSH 工作流引擎的纪律一致。
-- **无预算/成本台账**；并发默认保守（`globalLimit ≤ 4`）以约束 token 消耗。
-- 委派子智能体继承 DSH 子智能体策略：审批固定为 `'never'`、继承沙箱作用域；需要审批类工具的节点会确定性失败。
-- 插件**永不**自行判断单智能体 vs 多智能体；工具指引要求模型仅在明确的"多智能体 DAG 工作流"场景使用 `dag_run`。
-- `dag-core` 的 JSON Schema 校验支持内联 draft-07 子集（不支持 `$ref`）。
+## 卸载
 
----
+```bash
+dsh plugin --profile <name> remove dsh-dag
+```
 
-## 测试
-
-- `packages/dag-core`：95 个测试，逐场景移植自 Router 的确定性测试套件（`test_validation.py`、`test_analysis.py`、`test_node_state_machine.py`、`test_event_scheduler.py`、`test_async_scheduler.py`、`scheduling/test_kernel.py`、`test_retry_policy.py`、`test_result_validation.py`、`test_fusion_dedup.py`），另含镜像 `test_agentic_e2e.py` 的 E2E 场景。
-- `packages/dsh-dag`：16 个测试，使用假子智能体 provider——真实 cordis `Context` 下的插件挂载、运行控制器 E2E、节点执行器错误映射、工具契约。无网络、无真实 LLM、无真实 DSH profile。
+然后从智能体 preset 中移除组合的副本（例如上面的 `dag-delegation` 组），并重启会话。卸载时插件会自动取消所有进行中的运行。
 
 ---
 
-## 设计参考
+## 给开发者
 
-- 迁移来源与 1:1 移植纪律：见规范文档（上文链接），其中含 Router 组件映射表（C.3）、耦合切断点（C.4）与验收标准（I）。
-- 核心原则：**确定性规则在代码中，语义判断委托给子智能体**（镜像 Router `AGENTS.md` §3.1）。
-- 后续方向（V0.2+）：失败反思、动态路由、计划修订、Checkpoint、Human-in-the-loop——见规范 B.2 非目标清单。
+快速上手——完整的工程规范与迁移方案见
+[`docs/DSH Multi-Agent DAG Plugin — Engineering Specification & Migration Plan.md`](docs/DSH%20Multi-Agent%20DAG%20Plugin%20—%20Engineering%20Specification%20%26%20Migration%20Plan.md)。
+
+```
+packages/
+├── dag-core/   dsh-dag-core  —— 框架无关的编排引擎（零运行时依赖）
+└── dsh-dag/    dsh-dag   —— Cordis 插件适配层
+```
+
+```bash
+npm install --ignore-scripts   # workspace 安装（typescript + vitest）
+npm run build                  # tsc → packages/*/lib
+npm run typecheck
+npm test                       # 110 个确定性测试 —— 无网络、无真实 LLM
+```
+
+`dag-core` 是经过验证的 Python 编排中间层的忠实 TypeScript 移植，为保持 1:1 对齐（组件映射见上方的规范文档）。插件适配层刻意保持轻薄：所有编排逻辑都在 `dag-core`，所有 DSH 相关逻辑都在 `dsh-dag`。
 
 ## 许可证
 

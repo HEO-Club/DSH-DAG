@@ -1,6 +1,6 @@
 {
   "name": "dsh-dag-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Framework-free deterministic DAG orchestration core — TypeScript port of the llm-router planner/scheduler/validator/fusion pipeline",
   "main": "./lib/index.js",

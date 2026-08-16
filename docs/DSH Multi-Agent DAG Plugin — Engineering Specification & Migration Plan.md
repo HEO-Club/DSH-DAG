@@ -1,7 +1,7 @@
 # DSH Multi-Agent DAG Plugin — Engineering Specification & Migration Plan
 
 > **Status:** Specification (not implemented).
-> **Working name:** `@evo-router/dsh-dag` (adapter plugin) + `@evo-router/dag-core` (framework-free orchestration library).
+> **Working name:** `dsh-dag` (adapter plugin) + `dsh-dag-core` (framework-free orchestration library).
 > **Target platform:** DeepSeek Harness (DSH) `0.1.0-rc.6` (Cordis plugin model).
 >
 > This document is a **development specification for a future AI coding agent**. It is based on actual source inspection of both codebases:
@@ -333,7 +333,7 @@ A DSH plugin is a **plain ESM module** exporting `{ name, Config, inject, apply 
                │ dependsOn,inputs,model?,...}], options{concurrency,retry,fusion}
                ▼
 ┌───────────────────────────────────────────────────────────────────────────┐
-│ DSH Plugin Adapter  (@evo-router/dsh-dag, Cordis plugin)                  │
+│ DSH Plugin Adapter  (dsh-dag, Cordis plugin)                  │
 │   - provides `dag` service (DAGRunController)                             │
 │   - registers `dag_run` tool (defineTool + tool:dag_run prompt section)   │
 │   - config: subagentProvider, concurrency, retry, timeout, fusion         │
@@ -342,7 +342,7 @@ A DSH plugin is a **plain ESM module** exporting `{ name, Config, inject, apply 
 └──────────────┬────────────────────────────────────────────────────────────┘
                ▼
 ┌───────────────────────────────────────────────────────────────────────────┐
-│ DAG Orchestration Core  (@evo-router/dag-core, framework-free TS lib)     │
+│ DAG Orchestration Core  (dsh-dag-core, framework-free TS lib)     │
 │   compile(proposal) → validate → analyze → schedule → execute waves →     │
 │   validate nodes → retry → fuse                                           │
 │   model.ts / proposal.ts / compiler.ts / validation.ts / analysis.ts /    │
@@ -384,7 +384,7 @@ Pure orchestration; **zero `@deepseek-ai/*` imports**; unit-testable in isolatio
 | `fusion.ts` + `dedup.ts` | `src/fusion/typed.py` + `dedup.py` | `dedupNodeResults`, `failureSummary`, `fuse(task, results, failures, {llmFuse})`. |
 | `errors.ts` | `src/planning/errors.py` | `PlanningError`-equivalent with codes and `issues`. |
 
-#### E.2.2 DSH adapter plugin (`@evo-router/dsh-dag`)
+#### E.2.2 DSH adapter plugin (`dsh-dag`)
 
 - `index.ts` — plugin entry:
   ```ts
@@ -472,7 +472,7 @@ dsh-dag-plugin/
 ├── README.md                            # install/usage/design overview
 │
 ├── packages/
-│   ├── dag-core/                        # @evo-router/dag-core — framework-free TS lib
+│   ├── dag-core/                        # dsh-dag-core — framework-free TS lib
 │   │   ├── package.json                 # type: module; main/exports lib/index.js; zero @deepseek-ai deps
 │   │   ├── src/
 │   │   │   ├── index.ts                 # public exports
@@ -503,7 +503,7 @@ dsh-dag-plugin/
 │   │       ├── fusion.test.ts           # ← tests/test_fusion_dedup.py
 │   │       └── e2e.test.ts              # ← scenarios from tests/test_agentic_e2e.py
 │   │
-│   └── dsh-dag/                         # @evo-router/dsh-dag — the Cordis plugin
+│   └── dsh-dag/                         # dsh-dag — the Cordis plugin
 │       ├── package.json                 # type: module; "dsh": {"bundle": {"patch": "./cordis.patch.yml"}}
 │       │                                # peerDeps: dsh-tools, dsh-subagent, dsh-system-prompt,
 │       │                                #   dsh-session, dsh-agent, dsh-workflow, cordis, schemastery
@@ -552,7 +552,7 @@ dsh-dag-plugin/
 | 10 | **Run controller + tool** — `dag-run.ts`, `dag-service.ts`, `tool.ts`; `exec.signal` → `cancel`; canonical result envelope; `isError` on non-completed stop reasons. | D.4 (tools/systemPrompt); `dsh-tool-workflow` lifecycle | Tool tests: valid/invalid proposals, cancellation, timeout, envelope shape; guidance section registered. |
 | 11 | **Events + Session projection** — `events.ts`; observe-only `dag/*` events; project run records into the calling Agent's Session for root executions. | D.4 (session); `dsh-tool-workflow` Session projection | Tests assert event pairing/order (run-start before node-start; node-end before run-end; no unpaired terminals). |
 | 12 | **Preset integration** — add the tool row to a preset copy (of `standard` or `cordis`) inside a `cordis:group` with `isolate`; verify with `dsh --profile <dev> --dump-config` and a live smoke run. | D.1/D.6; preset YAMLs | `--dump-config` shows the composed rows; a real DSH session calls `dag_run` and gets a valid multi-agent result with ≥2 parallel nodes. |
-| 13 | **Docs & acceptance** — README (install via `dsh plugin --profile <name> add @evo-router/dsh-dag`), architecture doc, acceptance checklist (I). | — | All acceptance criteria green. |
+| 13 | **Docs & acceptance** — README (install via `dsh plugin --profile <name> add dsh-dag`), architecture doc, acceptance checklist (I). | — | All acceptance criteria green. |
 
 > **Porting discipline:** for every step, run the *same test scenarios* that exist in the Router against the TS port. Discrepancies are bugs in the port unless they are deliberate, documented changes (e.g. dropping SQLite persistence). Do not silently diverge.
 
@@ -607,7 +607,7 @@ No real API keys, no network, no real DSH profile in CI beyond an optional smoke
 
 The plugin is complete when **all** of the following hold:
 
-1. **Packaging/install:** `dsh plugin --profile <dev> add @evo-router/dsh-dag` installs the bundle; `dsh --profile <dev> --dump-config` shows the plugin row; a DSH session on the composed preset exposes `dag_run` to the model.
+1. **Packaging/install:** `dsh plugin --profile <dev> add dsh-dag` installs the bundle; `dsh --profile <dev> --dump-config` shows the plugin row; a DSH session on the composed preset exposes `dag_run` to the model.
 2. **Declarative input:** the model (or any caller) can submit a `TaskGraphProposal`-shaped workflow with `dependsOn`/`inputs`, concurrency, retry, and fusion options; malformed proposals return structured, model-correctable errors without creating a run.
 3. **Deterministic DAG core:** cycle, duplicate-id, unknown-dependency, and no-final-output proposals are rejected deterministically (never executed); valid DAGs compile to a topologically ordered plan with correct `parallelGroups`/`priorities`.
 4. **Parallel execution:** independent nodes of a diamond DAG execute concurrently (observed via a concurrency counter in tests); dependent nodes start only after all parents succeed.
