@@ -2,20 +2,26 @@
 
 > [English](./README.md) · **中文（简体）**
 
-让你的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 智能体能够**以声明式的方式运行复杂的多智能体工作流**：把一个大的任务拆成一张由若干小任务（节点）组成的依赖图，互不依赖的节点并行执行，最后把结果汇成一份答案——编排过程由代码确定性保证。
+让你的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 能够并行调度多个智能体，大幅提升长程任务执行效率。
 
-## 这是什么
+## 介绍
 
-DSH 的主智能体是一条"长时间运行"的回合机器。在主智能体里手工编排多智能体工作流（一部分子任务互相独立、一部分互相依赖、并行执行、聚合结果）既容易出错，也无法扩展。DSH 内置了**命令式**的扇出能力（`subagent`、`workflow`），但缺少一种**声明式**描述依赖图、由机器来执行的方式。
+DeepSeek是一台"长时间运行"的回合机器。
 
-这个插件补上了这一环。模型（或任意调用方）提交一段简短的 JSON 来描述工作流——节点、依赖、成功标准——剩下的事情交给插件：
+在主智能体里手工编排多智能体工作流（一部分子任务互相独立、一部分互相依赖、并行执行、聚合结果）既容易出错，也无法扩展。
+
+
+
+这就是为什么我们为mutil-agent工作模式设计了：DSH-DAG 插件。模型提交一段简短的 JSON 来描述工作流——节点、依赖、成功标准——剩下的事情交给插件：
 
 - 在运行前**校验**任务图，非法提案直接拒绝，不会浪费任何一次调用；
 - 在并发上限内**并行调度**所有就绪节点；
 - 对有限的失败做**指数退避重试**；
-- 把成功的节点结果**融合**成一份最终答案。
+- 把子节点结果**融合**成一份最终答案。
 
-**你只需要描述工作流*是什么*，插件负责它*怎么跑*。**
+**简单来说，DSH-DAG的使命就是 *检查任务，分配资源，并行执行，融合结果*。它的存在就是为了帮你提高速度，避免错误。**
+
+对于用户，你无需做任何额外的工作，只需要正常使用DeepSeek Harness，当模型需要调度多个智能体时，DSH-DAG插件会**自动接管**。
 
 ## 能力一览
 
@@ -56,13 +62,13 @@ dag-core    框架无关的编排引擎 —— 模型、校验、分析、
 ### 1. 安装到 DSH profile
 
 ```bash
-dsh plugin --profile <name> add dsh-dag
+dsh plugin --profile web add dsh-dag
 ```
 
 安装时会自动应用插件的 bundle patch，把 `dsh-dag` 行插入宿主组合，并在宿主平面提供 `dag` 服务。验证是否生效：
 
 ```bash
-dsh --profile <name> --dump-config | grep dsh-dag
+dsh --profile web --dump-config | grep dsh-dag
 ```
 
 ### 2. 把工具暴露给你的智能体
@@ -201,7 +207,7 @@ dsh plugin --profile <name> remove dsh-dag
 
 ## 给开发者
 
-快速上手——完整的工程规范与迁移方案见
+快速上手——完整的工程规范见
 [`docs/DSH Multi-Agent DAG Plugin — Engineering Specification & Migration Plan.md`](docs/DSH%20Multi-Agent%20DAG%20Plugin%20—%20Engineering%20Specification%20%26%20Migration%20Plan.md)。
 
 ```
