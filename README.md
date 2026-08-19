@@ -2,20 +2,26 @@
 
 > **English** · [中文（简体）](./README.zh.md)
 
-Give your [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) agents the power to run **complex multi-agent workflows, declaratively**: break one big task into a graph of smaller agent subtasks, run the independent ones in parallel, and combine the results — with deterministic, code-enforced orchestration.
 
-## What it is
+ Enable Your [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) to Schedule Multiple Agents in Parallel for Dramatically Improved Long‑Horizon Task Efficiency
 
-The DSH main agent is a single long-running turn. Fanning out to many agents by hand — some subtasks depending on others, results flowing back and forth — is error-prone and doesn't scale. DSH already ships *imperative* fan-out (`subagent`, `workflow`), but nothing that *declaratively* describes a dependency graph and lets the machine run it.
+## What's this?
 
-This plugin fills that gap. The model (or any caller) submits a small JSON description of the workflow — nodes, dependencies, success criteria — and the plugin takes care of the rest:
+DeepSeek Harness functions as a long‑running turn‑based execution machine.
 
-- it **validates** the graph up front and rejects bad proposals *before anything runs*,
-- it **schedules** ready nodes in parallel under concurrency limits,
-- it **retries** bounded failures with exponential backoff,
-- and it **fuses** the successful results into one final answer.
+Manually orchestrating multi‑agent workflows inside the main agent — where some subtasks are independent while others carry dependencies, need parallel execution, and require result aggregation — is both error‑prone and poorly scalable.
 
-**You describe *what* the workflow is. The plugin handles *how* it runs.**
+This is why we designed the **DSH‑DAG Plugin** for multi‑agent workloads. The model submits a concise JSON describing the workflow: nodes, dependencies, and success criteria. The plugin handles everything else:
+
+- **Validate** the task graph before execution; reject invalid proposals immediately without consuming any inference calls.
+- **Schedule** all ready‑to‑run nodes in parallel within configured concurrency limits.
+- Perform **exponential‑backoff retries** for transient failures.
+- **Merge** outputs from child nodes into a consolidated final answer.
+
+In short, the mission of DSH‑DAG is: *validate tasks, allocate resources, execute in parallel, merge results*. It exists purely to boost throughput and eliminate manual orchestration bugs.
+
+From the user’s perspective, no extra work is required. Use DeepSeek Harness as normal. Whenever the model needs to launch multiple agents, the DSH‑DAG plugin takes over **automatically**.
+
 
 ## Capabilities at a glance
 
@@ -56,13 +62,13 @@ Every run follows one deterministic pipeline:
 ### 1. Install the plugin into a DSH profile
 
 ```bash
-dsh plugin --profile <name> add dsh-dag
+dsh plugin web <name> add dsh-dag
 ```
 
 Installing applies the plugin's bundle patch, which inserts the `dsh-dag` row into the host composition and provides the `dag` service on the host plane. Verify it landed:
 
 ```bash
-dsh --profile <name> --dump-config | grep dsh-dag
+dsh --profile web --dump-config | grep dsh-dag
 ```
 
 ### 2. Expose the tool to your agents
@@ -201,7 +207,7 @@ Then remove the composed preset copy (e.g. the `dag-delegation` group above) fro
 
 ## For developers
 
-Quick orientation — the full engineering specification and migration plan lives in
+Quick orientation — the full engineering specification 
 [`docs/DSH Multi-Agent DAG Plugin — Engineering Specification & Migration Plan.md`](docs/DSH%20Multi-Agent%20DAG%20Plugin%20—%20Engineering%20Specification%20%26%20Migration%20Plan.md).
 
 ```
